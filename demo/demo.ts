@@ -160,6 +160,12 @@ function mountView(
 
 installObsidianDomHelpers();
 
+// Mimic Obsidian's body.is-mobile class at narrow widths so the compact ribbon
+// rules can be verified in the demo.
+if (window.innerWidth < 600) {
+	document.body.classList.add("is-mobile");
+}
+
 const app = document.body.createDiv();
 app.id = "app";
 

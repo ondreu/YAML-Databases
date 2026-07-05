@@ -149,6 +149,50 @@
 	height: var(--icon-s);
 }
 
+/*
+ * Compact the ribbon on mobile only (Obsidian sets body.is-mobile). Desktop is
+ * unchanged: drop the group captions and tighten button/icon/padding sizes so
+ * the ribbon takes far less vertical and horizontal space.
+ */
+.is-mobile .yaml-trees-view .yt-ribbon {
+	padding: 2px 4px;
+}
+
+.is-mobile .yaml-trees-view .yt-rgroup {
+	padding: 0 4px;
+}
+
+.is-mobile .yaml-trees-view .yt-rgroup-cap {
+	display: none;
+}
+
+.is-mobile .yaml-trees-view .yt-rdiv {
+	margin: 3px 2px;
+}
+
+.is-mobile .yaml-trees-view .yt-rb {
+	min-width: 40px;
+	gap: 2px;
+	padding: 3px 5px;
+	font-size: 10px;
+}
+
+.is-mobile .yaml-trees-view .yt-rb-icon svg {
+	width: 17px;
+	height: 17px;
+}
+
+.is-mobile .yaml-trees-view .yt-rb-mini {
+	gap: 4px;
+	padding: 2px 6px 2px 4px;
+	font-size: 11px;
+}
+
+.is-mobile .yaml-trees-view .yt-rb-mini-icon svg {
+	width: 13px;
+	height: 13px;
+}
+
 /* --- Editor area ------------------------------------------------------- */
 
 .yaml-trees-view .yt-editor {
