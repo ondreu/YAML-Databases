@@ -9,7 +9,7 @@ on:
       tag:
         description: "Release tag (must match manifest.json version, e.g. 0.1.0-beta.1)"
         required: true
-        default: "0.1.0-beta.1"
+        default: "0.2.0"
 
 permissions:
   contents: write
