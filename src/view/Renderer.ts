@@ -1,4 +1,5 @@
 import { App } from "obsidian";
+import type { CommentMap } from "../model/YamlDocument";
 import type { RuleSet } from "../lint/lint";
 
 // Contract between the view and its interchangeable renderers (table / form /
@@ -22,6 +23,12 @@ export interface EditorHost {
 	touch(): void;
 	/** Force a re-render of the active renderer. */
 	rerender(): void;
+	/** Per-cell comment map (may be null when the file has no comments). */
+	comments(): CommentMap | null;
+	/** Get a cell's trailing comment, or undefined if none. */
+	getComment(container: object, key: string): string | undefined;
+	/** Set or replace a cell's trailing comment (empty string removes it). */
+	setComment(container: object, key: string, text: string): void;
 }
 
 export abstract class Renderer {

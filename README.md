@@ -97,6 +97,10 @@ This gives you the best of both worlds:
   (Ctrl/Cmd+D) over a selected range.
 - **Cell types** — per cell choose text, number, checkbox, multiline text,
   list, sub-table, or object (right-click a cell).
+- **Per-cell comments** — right-click a cell → *Add comment* to attach a
+  trailing `# comment` that round-trips through the structured views (it
+  follows the row when reordered). Cells with a comment show a corner mark
+  and a hover tooltip.
 - **Linter** — built-in checks plus your own **declarative YAML rules**
   (`required`, `unique`, `type`, `min`/`max`, `enum`, `pattern`, `nonEmpty`)
   set in settings; results show in a panel from the **Lint** button.
@@ -232,9 +236,11 @@ mangled.
 
 ## Limitations
 
-- **Comments and anchors/aliases are not preserved** when a file is edited
-  through the structured views. The plugin shows a notice when it opens such a
-  file. Use the Source view or an external editor if you need them.
+- **Trailing cell comments are preserved** through the structured views.
+  Other comment forms (standalone comment lines, comments before a key,
+  document-level comments) and anchors/aliases are **not preserved** — the
+  plugin shows a notice when it opens such a file. Use the Source view or an
+  external editor if you need them.
 - Files that fail to parse are shown with an error and are **never overwritten**
   until the syntax is valid.
 

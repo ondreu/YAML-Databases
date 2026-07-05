@@ -35,6 +35,9 @@ function makeHost(initial: unknown, renderer?: () => TableRenderer): TestHost {
 			rerenders++;
 			renderer?.().render();
 		},
+		comments: () => null,
+		getComment: () => undefined,
+		setComment: () => {},
 		rerenders: 0,
 		current: () => data,
 	};
@@ -300,3 +303,49 @@ test("highlightYaml escapes HTML metacharacters", () => {
 	assert.ok(!html.includes("<script>"));
 	assert.match(html, /&lt;script&gt;/);
 });
+
+// --- Per-cell comments -------------------------------------------------------
+
+import {
+	parseYamlWithMeta,
+	serializeYamlWithMeta,
+} from "../src/model/YamlDocument";
+
+test("cell comments round-trip through parse -> serialize", () => {
+	const src = [
+		"- part: Bolt   # a fastener",
+		"  qty: 4",
+		"- part: Nut",
+		"  qty: 8  # eight",
+	].join("\n");
+	const result = parseYamlWithMeta(src);
+	assert.ok(result.commentMap, "comment map was populated");
+	const records = result.value as Record<string, unknown>[];
+	assert.equal(result.commentMap!.get(records[0])?.get("part"), " a fastener");
+	assert.equal(result.commentMap!.get(records[1])?.get("qty"), " eight");
+	const out = serializeYamlWithMeta(result.frontmatter, result.value, result.commentMap);
+	assert.match(out, /part: Bolt # a fastener/);
+	assert.match(out, /qty: 8 # eight/);
+	// Cells without comments are untouched.
+	assert.match(out, /  qty: 4$/m);
+});
+
+test("cell comments survive reordering (WeakMap keyed by record object)", () => {
+	const src = [
+		"- part: Bolt   # fastener",
+		"  qty: 4",
+		"- part: Nut",
+		"  qty: 8",
+	].join("\n");
+	const result = parseYamlWithMeta(src);
+	const records = result.value as Record<string, unknown>[];
+	const bolt = records[0];
+	// Swap rows: Nut first, Bolt second.
+	records.push(records.shift()!);
+	assert.equal(records[1], bolt, "Bolt object moved to index 1");
+	// Comment should still resolve on the Bolt object.
+	assert.equal(result.commentMap!.get(bolt)?.get("part"), " fastener");
+	const out = serializeYamlWithMeta(null, records, result.commentMap);
+	assert.match(out, /part: Bolt # fastener/);
+});
+

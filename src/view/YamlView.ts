@@ -10,6 +10,7 @@ import { VIEW_TYPE_YAML, ICONS, type ViewMode } from "../constants";
 import {
 	parseYamlWithMeta,
 	serializeYamlWithMeta,
+	type CommentMap,
 } from "../model/YamlDocument";
 import { coerceScalar, formatScalar } from "../model/coerce";
 import { detectShape, collectColumns, isPlainObject } from "../model/shape";
@@ -49,6 +50,8 @@ export class YamlView extends TextFileView implements EditorHost {
 	private model: unknown = undefined;
 	/** Obsidian-style frontmatter (leading `---` map), or null when absent. */
 	private frontmatter: Record<string, unknown> | null = null;
+	/** Per-cell trailing comments, keyed by parent container + column/index. */
+	private commentMap: CommentMap | null = null;
 	private metaVisible = false;
 	private metaEl!: HTMLElement;
 	private mode: ViewMode;
@@ -91,7 +94,7 @@ export class YamlView extends TextFileView implements EditorHost {
 		if (this.parseError !== null) {
 			return this.data;
 		}
-		return serializeYamlWithMeta(this.frontmatter, this.model);
+		return serializeYamlWithMeta(this.frontmatter, this.model, this.commentMap);
 	}
 
 	setViewData(data: string, clear: boolean): void {
@@ -106,10 +109,11 @@ export class YamlView extends TextFileView implements EditorHost {
 			const result = parseYamlWithMeta(data);
 			this.model = result.value;
 			this.frontmatter = result.frontmatter;
+			this.commentMap = result.commentMap;
 			this.lastSnapshot = structuredClone(this.model);
 			this.parseError = null;
-			if (result.hasComments || result.hasAnchors) {
-				this.warnRoundTrip(result.hasComments, result.hasAnchors);
+			if (result.hasAnchors) {
+				this.warnRoundTrip(false, true);
 			}
 			this.pickInitialMode();
 		} catch (e) {
@@ -123,6 +127,7 @@ export class YamlView extends TextFileView implements EditorHost {
 	clear(): void {
 		this.model = undefined;
 		this.frontmatter = null;
+		this.commentMap = null;
 		this.parseError = null;
 		this.renderers = {};
 		this.contentEl.empty();
@@ -204,6 +209,34 @@ export class YamlView extends TextFileView implements EditorHost {
 	}
 
 	rerender(): void {
+		this.renderActive();
+	}
+
+	comments(): CommentMap | null {
+		return this.commentMap;
+	}
+
+	getComment(container: object, key: string): string | undefined {
+		return this.commentMap?.get(container)?.get(key);
+	}
+
+	setComment(container: object, key: string, text: string): void {
+		if (!this.commentMap) this.commentMap = new WeakMap();
+		const inner = this.commentMap.get(container);
+		if (text === "") {
+			if (inner) {
+				inner.delete(key);
+				if (inner.size === 0) this.commentMap.delete(container);
+			}
+		} else {
+			if (!inner) {
+				this.commentMap.set(container, new Map([[key, text]]));
+			} else {
+				inner.set(key, text);
+			}
+		}
+		this.recordHistory();
+		this.requestSave();
 		this.renderActive();
 	}
 
@@ -705,7 +738,7 @@ export class YamlView extends TextFileView implements EditorHost {
 
 	/** Deterministic YAML serialization of the current model + frontmatter. */
 	private yamlText(): string {
-		return serializeYamlWithMeta(this.frontmatter, this.model);
+		return serializeYamlWithMeta(this.frontmatter, this.model, this.commentMap);
 	}
 
 	/** Write an export next to the current file, avoiding name collisions. */
@@ -738,8 +771,8 @@ export class YamlView extends TextFileView implements EditorHost {
 
 	private warnRoundTrip(hasComments: boolean, hasAnchors: boolean): void {
 		const parts: string[] = [];
-		if (hasComments) parts.push("comments");
 		if (hasAnchors) parts.push("anchors/aliases");
+		if (parts.length === 0) return;
 		new Notice(
 			`YAML Databases: this file contains ${parts.join(" and ")}, which are not preserved when edited here.`,
 			8000

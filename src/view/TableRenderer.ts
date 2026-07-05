@@ -23,6 +23,7 @@ import { columnTotals } from "../model/aggregate";
 import { computeView, type SortDir } from "../model/sort";
 import { lintRecords, type ColumnRule } from "../lint/lint";
 import { MultilineModal } from "./MultilineModal";
+import { CommentModal } from "./CommentModal";
 
 // Spreadsheet editor for a list of records. Supports drill-down into nested
 // record lists (sub-databases / subassemblies), per-cell types, resizable and
@@ -469,6 +470,11 @@ export class TableRenderer extends Renderer {
 		);
 		if (this.invalid.has(`${rowIndex}:${column}`)) {
 			td.addClass("yt-cell-invalid");
+		}
+		const comment = this.host.getComment(record, column);
+		if (comment) {
+			td.addClass("yt-cell-comment");
+			td.setAttr("title", `# ${comment}`);
 		}
 
 		// Schema: enum columns render as a dropdown.
@@ -1266,7 +1272,32 @@ export class TableRenderer extends Renderer {
 				this.host.replaceData(this.host.getData());
 			})
 		);
+		menu.addSeparator();
+		const existing = this.host.getComment(record, column);
+		menu.addItem((i) =>
+			i
+				.setTitle(existing ? "Edit comment" : "Add comment")
+				.setIcon("message-square")
+				.onClick(() => this.editComment(record, column))
+		);
+		if (existing) {
+			menu.addItem((i) =>
+				i.setTitle("Remove comment").setIcon("trash").onClick(() =>
+					this.host.setComment(record, column, "")
+				)
+			);
+		}
 		menu.showAtMouseEvent(evt);
+	}
+
+	private editComment(
+		record: Record<string, unknown>,
+		column: string
+	): void {
+		const existing = this.host.getComment(record, column) ?? "";
+		new CommentModal(this.host.app, column, existing, (text) => {
+			this.host.setComment(record, column, text);
+		}).open();
 	}
 
 	private addSubtableColumn(records: Record<string, unknown>[]): void {
