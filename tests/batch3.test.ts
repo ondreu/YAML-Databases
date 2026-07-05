@@ -3,6 +3,11 @@ import assert from "node:assert/strict";
 import { mergeColumnOrder } from "../src/model/records";
 import { explodeForExport } from "../src/model/flatten";
 import { cellType } from "../src/model/cells";
+import { assignIds } from "../src/model/autoId";
+import {
+	parseYamlWithMeta,
+	serializeYamlWithMeta,
+} from "../src/model/YamlDocument";
 
 // --- Column-order override (fixes: cannot move columns near sub-tables) ------
 
@@ -74,4 +79,66 @@ test("explodeForExport leaves a flat database untouched (no Level column)", () =
 	const { records, columns } = explodeForExport(flat);
 	assert.deepEqual(columns, ["part", "qty"]);
 	assert.equal(records, flat); // same array, no transform
+});
+
+// --- Auto-ID (nested-friendly hierarchical IDs) -----------------------------
+
+test("assignIds numbers records hierarchically, id first, recursing sub-tables", () => {
+	const bom = [
+		{ name: "A", bom: [{ name: "A-bolt" }, { name: "A-nut" }] },
+		{ name: "B" },
+	];
+	const n = assignIds(bom);
+	assert.equal(n, 4);
+	assert.equal(bom[0].id, "1");
+	// id is the first key.
+	assert.equal(Object.keys(bom[0])[0], "id");
+	const sub = bom[0].bom as Record<string, unknown>[];
+	assert.equal(sub[0].id, "1.1");
+	assert.equal(sub[1].id, "1.2");
+	assert.equal(bom[1].id, "2");
+});
+
+test("assignIds overwrites existing ids consistently", () => {
+	const bom = [{ id: "old", name: "A" }];
+	assignIds(bom);
+	assert.equal(bom[0].id, "1");
+	assert.equal(Object.keys(bom[0]).join(","), "id,name");
+});
+
+// --- Metadata / frontmatter round-trip --------------------------------------
+
+test("parseYamlWithMeta splits a leading frontmatter document from the body", () => {
+	const text = "---\ntitle: My BOM\nrev: 3\n---\n- part: Bolt\n  qty: 4\n";
+	const r = parseYamlWithMeta(text);
+	assert.deepEqual(r.frontmatter, { title: "My BOM", rev: 3 });
+	assert.deepEqual(r.value, [{ part: "Bolt", qty: 4 }]);
+});
+
+test("parseYamlWithMeta treats a plain file as having no frontmatter", () => {
+	const r = parseYamlWithMeta("- part: Bolt\n  qty: 4\n");
+	assert.equal(r.frontmatter, null);
+	assert.deepEqual(r.value, [{ part: "Bolt", qty: 4 }]);
+});
+
+test("a leading --- on a single document is not mistaken for frontmatter", () => {
+	const r = parseYamlWithMeta("---\n- part: Bolt\n");
+	assert.equal(r.frontmatter, null);
+	assert.deepEqual(r.value, [{ part: "Bolt" }]);
+});
+
+test("serializeYamlWithMeta round-trips through parseYamlWithMeta", () => {
+	const fm = { title: "My BOM", rev: 3 };
+	const body = [{ part: "Bolt", qty: 4 }];
+	const text = serializeYamlWithMeta(fm, body);
+	assert.ok(text.startsWith("---\n"));
+	const back = parseYamlWithMeta(text);
+	assert.deepEqual(back.frontmatter, fm);
+	assert.deepEqual(back.value, body);
+});
+
+test("serializeYamlWithMeta with empty frontmatter emits only the body", () => {
+	const text = serializeYamlWithMeta(null, [{ part: "Bolt" }]);
+	assert.ok(!text.startsWith("---"));
+	assert.equal(serializeYamlWithMeta({}, [{ part: "Bolt" }]), text);
 });
