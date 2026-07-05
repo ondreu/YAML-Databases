@@ -87,20 +87,20 @@ export default class YamlDatabasesPlugin extends Plugin {
 		// or the default Markdown view grabbed it. Essential on mobile where
 		// clicking the file may route elsewhere.
 		this.addCommand({
-			id: "open-in-yaml-databases",
-			name: "Open current file in YAML Databases",
+			id: "open-current-file",
+			name: "Open current file",
 			checkCallback: (checking: boolean) => {
 				const file = this.app.workspace.getActiveFile();
-				const eligible = !!file && isYamlDbFile(file.path);
-				if (eligible && !checking) {
-					void this.openInYamlView(file as TFile);
+				if (!file || !isYamlDbFile(file.path)) return false;
+				if (!checking) {
+					void this.openInYamlView(file);
 				}
-				return eligible;
+				return true;
 			},
 		});
 
 		this.addRibbonIcon(ICONS.create, "Create YAML database", () => {
-			this.createDatabase(this.currentFolder());
+			void this.createDatabase(this.currentFolder());
 		});
 
 		this.addSettingTab(new YamlDatabasesSettingTab(this.app, this));
@@ -121,12 +121,12 @@ export default class YamlDatabasesPlugin extends Plugin {
 	 */
 	private hijackActiveIfMarkdown(path: string): void {
 		const leaf = this.app.workspace.getLeaf(false);
-		const view = leaf?.view;
-		if (!view) return;
-		if (view.getViewType?.() !== "markdown") return;
-		const f = (view as { file?: TFile } | null)?.file;
+		if (!leaf) return;
+		const view = leaf.view;
+		if (!view || view.getViewType?.() !== "markdown") return;
+		const f = (view as { file?: TFile }).file;
 		if (f && f.path === path) {
-			void leaf!.setViewState({
+			void leaf.setViewState({
 				type: VIEW_TYPE_YAML,
 				state: { file: path },
 				active: true,

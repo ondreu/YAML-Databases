@@ -252,3 +252,51 @@ test("cell menu Sub-table type makes a drillable sub-table (RMB path)", () => {
 	assert.ok(Array.isArray(data[0].detail), "cell became a sub-table array");
 	assert.equal((data[0].detail as unknown[]).length, 1, "seeded with a record");
 });
+
+// --- YAML syntax highlighter -------------------------------------------------
+
+import { highlightYaml } from "../src/view/yamlHighlight";
+
+function highlightToHtml(src: string): string {
+	const parent = document.createElement("div");
+	highlightYaml(parent, src);
+	return parent.innerHTML;
+}
+
+function stripHtml(html: string): string {
+	return html
+		.replace(/<[^>]+>/g, "")
+		.replace(/&lt;/g, "<")
+		.replace(/&gt;/g, ">")
+		.replace(/&amp;/g, "&");
+}
+
+test("highlightYaml preserves the exact source text (caret alignment)", () => {
+	const src = [
+		"---",
+		"title: My BOM",
+		"items:",
+		"  - part: Bolt   # a fastener",
+		"    qty: 4",
+		'    note: "a: b > c & <d>"',
+		"    ok: true",
+		"    spare: null",
+		"",
+	].join("\n");
+	assert.equal(stripHtml(highlightToHtml(src)), src);
+});
+
+test("highlightYaml tags keys, numbers, booleans, comments and markers", () => {
+	const html = highlightToHtml("part: Bolt\nqty: 4\nok: true\n# c\n---");
+	assert.match(html, /yt-yl-key">part/);
+	assert.match(html, /yt-yl-number">4/);
+	assert.match(html, /yt-yl-bool">true/);
+	assert.match(html, /yt-yl-comment"># c/);
+	assert.match(html, /yt-yl-marker">---/);
+});
+
+test("highlightYaml escapes HTML metacharacters", () => {
+	const html = highlightToHtml("x: <script>");
+	assert.ok(!html.includes("<script>"));
+	assert.match(html, /&lt;script&gt;/);
+});

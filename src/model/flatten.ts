@@ -124,9 +124,10 @@ export function explodeForExport(records: Record<string, unknown>[]): {
 	const scan = (recs: Record<string, unknown>[]): void => {
 		for (const r of recs) {
 			for (const k of Object.keys(r)) {
-				if (isRecords(r[k])) {
+				const v = r[k];
+				if (isRecords(v)) {
 					nested = true;
-					scan(r[k] as Record<string, unknown>[]);
+					scan(v);
 				}
 			}
 		}
@@ -158,7 +159,7 @@ export function explodeForExport(records: Record<string, unknown>[]): {
 			for (const k of Object.keys(r)) {
 				const v = r[k];
 				if (isRecords(v)) {
-					collectScalar(v as Record<string, unknown>[]);
+					collectScalar(v);
 					continue;
 				}
 				if (!seen.has(k)) {
@@ -185,7 +186,8 @@ export function explodeForExport(records: Record<string, unknown>[]): {
 			}
 			out.push(row);
 			for (const k of Object.keys(r)) {
-				if (isRecords(r[k])) emit(r[k] as Record<string, unknown>[], level + 1);
+				const v = r[k];
+				if (isRecords(v)) emit(v, level + 1);
 			}
 		}
 	};

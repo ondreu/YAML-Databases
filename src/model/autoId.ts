@@ -32,8 +32,9 @@ export function assignIds(
 
 			// Recurse into any nested sub-tables, extending this record's id.
 			for (const k of Object.keys(rec)) {
-				if (isRecords(rec[k])) {
-					walk(rec[k] as Record<string, unknown>[], id);
+				const v = rec[k];
+				if (isRecords(v)) {
+					walk(v, id);
 				}
 			}
 		});

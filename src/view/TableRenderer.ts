@@ -643,7 +643,7 @@ export class TableRenderer extends Renderer {
 				case "Tab":
 					if (!evt.shiftKey) {
 						evt.preventDefault();
-						this.focusCell(r, c + 1) || this.focusCell(r + 1, 0);
+						if (!this.focusCell(r, c + 1)) this.focusCell(r + 1, 0);
 					} else {
 						evt.preventDefault();
 						this.focusCell(r, c - 1);
@@ -841,8 +841,8 @@ export class TableRenderer extends Renderer {
 		column: string,
 		records: Record<string, unknown>[]
 	): void {
-		const first = (records[rowIndex] &&
-			Object.values(records[rowIndex])[0]) as unknown;
+		const first =
+			records[rowIndex] && Object.values(records[rowIndex])[0];
 		const label = `${column} of ${formatScalar(first) || `row ${rowIndex + 1}`}`;
 		this.path.push({ row: rowIndex, col: column, label });
 		this.columnOrder = null;
@@ -1077,7 +1077,7 @@ export class TableRenderer extends Renderer {
 		y: number,
 		attr: "rowIndex" | "colIndex"
 	): number | null {
-		const el = document.elementFromPoint(x, y) as HTMLElement | null;
+		const el = activeDocument.elementFromPoint(x, y) as HTMLElement | null;
 		const match = el?.closest<HTMLElement>(`[data-${attr === "rowIndex" ? "row-index" : "col-index"}]`);
 		if (!match) return null;
 		const raw = attr === "rowIndex" ? match.dataset.rowIndex : match.dataset.colIndex;
@@ -1125,11 +1125,11 @@ export class TableRenderer extends Renderer {
 				this.widths.set(column, width);
 			};
 			const onUp = () => {
-				document.removeEventListener("mousemove", onMove);
-				document.removeEventListener("mouseup", onUp);
+				activeDocument.removeEventListener("mousemove", onMove);
+				activeDocument.removeEventListener("mouseup", onUp);
 			};
-			document.addEventListener("mousemove", onMove);
-			document.addEventListener("mouseup", onUp);
+			activeDocument.addEventListener("mousemove", onMove);
+			activeDocument.addEventListener("mouseup", onUp);
 		});
 	}
 

@@ -41,7 +41,7 @@ export function parseYaml(text: string): ParseResult {
 	if (doc.errors.length > 0) {
 		throw new Error(doc.errors[0].message);
 	}
-	const value = doc.toJS({ maxAliasCount: -1 });
+	const value = doc.toJS({ maxAliasCount: -1 }) as unknown;
 	return {
 		value,
 		hasComments: documentHasComments(doc),
@@ -97,9 +97,9 @@ export function parseYamlWithMeta(text: string): MetaParseResult {
 	}
 
 	if (docs.length >= 2) {
-		const fm = docs[0].toJS({ maxAliasCount: -1 });
+		const fm = docs[0].toJS({ maxAliasCount: -1 }) as unknown;
 		if (isPlainMap(fm)) {
-			const body = docs[1].toJS({ maxAliasCount: -1 });
+			const body = docs[1].toJS({ maxAliasCount: -1 }) as unknown;
 			return {
 				value: body,
 				frontmatter: fm,

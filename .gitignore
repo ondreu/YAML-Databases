@@ -9,7 +9,6 @@ demo/*.xlsx
 
 # dependencies
 node_modules/
-package-lock.json
 
 # editor / os
 .DS_Store

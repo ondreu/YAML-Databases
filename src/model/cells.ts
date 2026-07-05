@@ -49,7 +49,9 @@ export function convertCell(value: unknown, to: CellType): unknown {
 			return Boolean(value) && value !== "false";
 		case "list": {
 			if (Array.isArray(value)) {
-				return value.map((v) => (isPlainObject(v) ? JSON.stringify(v) : v));
+				return value.map((v) =>
+					isPlainObject(v) ? JSON.stringify(v) : String(v)
+				);
 			}
 			if (typeof value === "string" && value.trim() !== "") {
 				return value.split(/\r?\n|,/).map((s) => coerceScalar(s.trim()));

@@ -34,7 +34,7 @@ export class SourceRenderer extends Renderer {
 		textarea.setAttr("autocomplete", "off");
 
 		const paint = () => {
-			code.innerHTML = highlightYaml(textarea.value);
+			highlightYaml(code, textarea.value);
 		};
 		const syncScroll = () => {
 			highlight.scrollTop = textarea.scrollTop;

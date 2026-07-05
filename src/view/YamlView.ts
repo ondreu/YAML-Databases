@@ -37,9 +37,10 @@ import { parseXlsx } from "../import/xlsxRead";
 // render the parsed model through the active renderer, plus export and lint.
 
 function asRecords(value: unknown): Record<string, unknown>[] | null {
-	return Array.isArray(value) && value.every(isPlainObject)
-		? (value as Record<string, unknown>[])
-		: null;
+	if (Array.isArray(value) && value.every(isPlainObject)) {
+		return value;
+	}
+	return null;
 }
 
 export class YamlView extends TextFileView implements EditorHost {
@@ -323,10 +324,10 @@ export class YamlView extends TextFileView implements EditorHost {
 
 		this.ribbonDivider();
 		const exp = this.ribbonGroup("Export");
-		this.ribbonButton(exp, "file-text", "CSV", () => this.exportCsv());
-		this.ribbonButton(exp, "sheet", "Excel", () => this.exportXlsx());
-		this.ribbonButton(exp, "file-code", "HTML", () => this.exportHtmlFile());
-		this.ribbonButton(exp, "braces", "YAML", () => this.exportYaml());
+		this.ribbonButton(exp, "file-text", "CSV", () => void this.exportCsv());
+		this.ribbonButton(exp, "sheet", "Excel", () => void this.exportXlsx());
+		this.ribbonButton(exp, "file-code", "HTML", () => void this.exportHtmlFile());
+		this.ribbonButton(exp, "braces", "YAML", () => void this.exportYaml());
 	}
 
 	private ribbonGroup(caption: string): HTMLElement {
@@ -620,7 +621,7 @@ export class YamlView extends TextFileView implements EditorHost {
 	// --- Import ----------------------------------------------------------
 
 	private importFile(): void {
-		const input = document.createElement("input");
+		const input = activeDocument.createElement("input");
 		input.type = "file";
 		input.accept = ".csv,.xlsx,text/csv";
 		input.addEventListener("change", () => void this.handleImport(input.files?.[0]));
