@@ -353,11 +353,13 @@ export class TableRenderer extends Renderer {
 			const tr = tbody.createEl("tr");
 			tr.dataset.rowIndex = String(rowIndex);
 
-			const gutter = tr.createEl("th", {
-				cls: "yt-rownum",
-				text: String(rowIndex + 1),
-			});
+			const gutter = tr.createEl("th", { cls: "yt-rownum" });
 			gutter.setAttr("aria-label", `Row ${rowIndex + 1}`);
+			// Grabber dots: the visible drag handle, shown on row hover.
+			const grip = gutter.createSpan({ cls: "yt-row-grip" });
+			setIcon(grip, "grip-vertical");
+			grip.setAttr("aria-label", "Drag to reorder row");
+			gutter.createSpan({ cls: "yt-rownum-label", text: String(rowIndex + 1) });
 			this.wireRowDrag(gutter, records, rowIndex);
 			gutter.addEventListener("click", (evt) =>
 				this.openRowMenu(evt, records, rowIndex)
