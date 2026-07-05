@@ -72,7 +72,22 @@ test("formatScalar renders nested markers and empty values", () => {
 	assert.equal(formatScalar(undefined), "");
 	assert.equal(formatScalar(5), "5");
 	assert.equal(formatScalar([1, 2]), "[2 items]");
-	assert.equal(formatScalar({ a: 1 }), "{…}");
+	assert.equal(formatScalar({ a: 1 }), "{1 fields}");
+});
+
+test("no user-facing formatter output contains non-ASCII", () => {
+	// Guards against typographic glyphs (em-dash, ellipsis) that can fall back
+	// to a CJK font and look like Chinese characters.
+	const samples = [
+		formatScalar(null),
+		formatScalar(42),
+		formatScalar("x"),
+		formatScalar([1, 2, 3]),
+		formatScalar({ a: 1, b: 2 }),
+	];
+	for (const s of samples) {
+		assert.ok(/^[\x00-\x7F]*$/.test(s), `non-ASCII in formatter output: ${s}`);
+	}
 });
 
 test("reports comments as a round-trip hazard", () => {

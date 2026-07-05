@@ -32,7 +32,11 @@ export function formatScalar(value: unknown): string {
 	}
 	if (typeof value === "object") {
 		// Nested structures are not editable as a single cell; show a marker.
-		return Array.isArray(value) ? `[${value.length} items]` : "{…}";
+		// Keep this ASCII-only: non-ASCII glyphs can fall back to a CJK font.
+		if (Array.isArray(value)) {
+			return `[${value.length} items]`;
+		}
+		return `{${Object.keys(value).length} fields}`;
 	}
 	return String(value);
 }

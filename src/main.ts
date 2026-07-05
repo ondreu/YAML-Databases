@@ -71,7 +71,7 @@ export default class YamlTreesPlugin extends Plugin {
 			await this.app.workspace.getLeaf(false).openFile(file);
 		} catch (e) {
 			new Notice(
-				`YAML Trees: could not create file — ${e instanceof Error ? e.message : String(e)}`
+				`YAML Trees: could not create file: ${e instanceof Error ? e.message : String(e)}`
 			);
 		}
 	}

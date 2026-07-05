@@ -13,9 +13,12 @@ single edit produces a single-line change. It works just as well for any YAML.
 - **Open `.yaml` / `.yml` files in the main area** by clicking them in the file
   explorer — they open in the YAML Trees editor, not as plain text.
 - **Three switchable views** (toggle in the view header):
-  - **Table** — for a list of records (rows × columns). Inline cell editing,
-    add / remove / rename / reorder columns, add / move / delete rows. The
-    primary view for BOMs.
+  - **Table** — a spreadsheet for a list of records (rows x columns). Row
+    numbers, a sticky header, inline cell and column-name editing, and
+    keyboard navigation (Tab / Enter / arrow keys move between cells; edits
+    never lose focus). Add rows and columns from the grid; right-click a row
+    number or column header to insert, move, duplicate or delete. The primary
+    view for BOMs.
   - **Form** — a collapsible, labelled tree for maps and nested data.
   - **Source** — the raw YAML with live syntax validation as an escape hatch.
 - **Create a new database** from the folder context menu (*New YAML database*),

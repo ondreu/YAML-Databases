@@ -146,7 +146,7 @@ export class FormRenderer extends Renderer {
 			});
 			input.value = formatScalar(value);
 			if (value === null || value === undefined) {
-				input.placeholder = "—";
+				input.placeholder = "null";
 			}
 			input.addEventListener("change", () => {
 				const before = typeof value;

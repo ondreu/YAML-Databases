@@ -1,7 +1,7 @@
 /*
- * YAML Trees styles. Everything is scoped under .yaml-trees-view and uses
- * Obsidian's own CSS variables, so the UI matches light/dark and community
- * themes automatically.
+ * YAML Trees styles. Scoped under .yaml-trees-view and built entirely from
+ * Obsidian's CSS variables, so the UI matches light/dark and community themes.
+ * No hard-coded colours, no non-ASCII content.
  */
 
 .yaml-trees-view {
@@ -13,37 +13,49 @@
 	font-size: var(--font-ui-small);
 }
 
-/* --- Mode switcher ----------------------------------------------------- */
+/* --- Mode switcher (segmented control) -------------------------------- */
 
 .yaml-trees-view .yt-modebar {
+	flex: 0 0 auto;
 	display: flex;
-	gap: var(--size-4-1);
+	gap: 0;
 	padding: var(--size-4-2) var(--size-4-3);
 	border-bottom: 1px solid var(--background-modifier-border);
-	flex: 0 0 auto;
 }
 
 .yaml-trees-view .yt-mode-btn {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--size-4-1);
-	padding: var(--size-4-1) var(--size-4-2);
-	background: transparent;
-	border: none;
-	border-radius: var(--radius-s);
+	padding: var(--size-4-1) var(--size-4-3);
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-right-width: 0;
+	border-radius: 0;
 	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
 	cursor: pointer;
 	box-shadow: none;
 }
 
+.yaml-trees-view .yt-mode-btn:first-child {
+	border-radius: var(--radius-s) 0 0 var(--radius-s);
+}
+
+.yaml-trees-view .yt-mode-btn:last-child {
+	border-right-width: 1px;
+	border-radius: 0 var(--radius-s) var(--radius-s) 0;
+}
+
 .yaml-trees-view .yt-mode-btn:hover {
-	background: var(--background-modifier-hover);
 	color: var(--text-normal);
+	background: var(--background-modifier-hover);
 }
 
 .yaml-trees-view .yt-mode-btn.is-active {
-	background: var(--background-modifier-active-hover);
-	color: var(--text-accent);
+	color: var(--text-on-accent);
+	background: var(--interactive-accent);
+	border-color: var(--interactive-accent);
 }
 
 .yaml-trees-view .yt-btn-icon {
@@ -60,23 +72,187 @@
 
 .yaml-trees-view .yt-editor {
 	flex: 1 1 auto;
-	overflow: auto;
-	padding: var(--size-4-3);
-}
-
-/* --- Toolbar / buttons ------------------------------------------------- */
-
-.yaml-trees-view .yt-toolbar {
+	min-height: 0;
+	overflow: hidden;
 	display: flex;
-	gap: var(--size-4-2);
-	margin-bottom: var(--size-4-2);
+	flex-direction: column;
 }
+
+/* --- Spreadsheet ------------------------------------------------------- */
+
+.yaml-trees-view .yt-sheet-scroll {
+	flex: 1 1 auto;
+	overflow: auto;
+}
+
+.yaml-trees-view .yt-sheet {
+	border-collapse: separate;
+	border-spacing: 0;
+	table-layout: fixed;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Every header/data cell draws its own right + bottom border so the grid
+ * stays intact while the header and gutter are sticky. */
+.yaml-trees-view .yt-sheet th,
+.yaml-trees-view .yt-sheet td {
+	border-right: 1px solid var(--background-modifier-border);
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding: 0;
+	margin: 0;
+	text-align: left;
+	vertical-align: middle;
+	background: var(--background-primary);
+}
+
+/* Column headers: sticky to the top. */
+.yaml-trees-view .yt-sheet thead th {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--background-secondary);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Fixed table layout takes column widths from the header row, so set them
+ * here; long cell values clip rather than stretching the grid. */
+.yaml-trees-view .yt-colhead {
+	width: 12em;
+}
+
+.yaml-trees-view .yt-colhead-input {
+	width: 100%;
+	box-sizing: border-box;
+	border: none;
+	background: transparent;
+	color: var(--text-normal);
+	font-weight: var(--font-semibold);
+	font-size: var(--font-ui-smaller);
+	padding: var(--size-4-1) var(--size-4-2);
+	box-shadow: none;
+	border-radius: 0;
+}
+
+.yaml-trees-view .yt-colhead-input:focus {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+}
+
+/* Row-number gutter: sticky to the left. */
+.yaml-trees-view .yt-rownum {
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	width: 3em;
+	min-width: 3em;
+	max-width: 3em;
+	text-align: center;
+	color: var(--text-faint);
+	background: var(--background-secondary);
+	font-size: var(--font-ui-smaller);
+	cursor: pointer;
+	user-select: none;
+	border-left: 1px solid var(--background-modifier-border);
+}
+
+.yaml-trees-view .yt-rownum:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+/* Corner cell sits above both sticky axes. */
+.yaml-trees-view .yt-corner {
+	position: sticky;
+	left: 0;
+	top: 0;
+	z-index: 3;
+	width: 3em;
+	min-width: 3em;
+	background: var(--background-secondary);
+	border-left: 1px solid var(--background-modifier-border);
+}
+
+/* Add-column / add-row affordances. */
+.yaml-trees-view .yt-addcol {
+	width: 2.4em;
+	min-width: 2.4em;
+	text-align: center;
+	color: var(--text-faint);
+	cursor: pointer;
+	font-weight: var(--font-semibold);
+}
+
+.yaml-trees-view .yt-addcol:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+.yaml-trees-view .yt-cell-spacer {
+	background: var(--background-primary);
+}
+
+.yaml-trees-view .yt-addrow-cell {
+	padding: var(--size-4-1) var(--size-4-2);
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: var(--font-ui-smaller);
+	background: var(--background-primary);
+}
+
+.yaml-trees-view .yt-addrow-cell:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+/* Data cells. */
+.yaml-trees-view tbody tr:hover .yt-rownum {
+	color: var(--text-normal);
+}
+
+.yaml-trees-view .yt-cell-input {
+	width: 100%;
+	box-sizing: border-box;
+	border: none;
+	background: transparent;
+	color: var(--text-normal);
+	padding: var(--size-4-1) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	box-shadow: none;
+	border-radius: 0;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.yaml-trees-view .yt-cell-input:focus {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+	background: var(--background-primary);
+}
+
+.yaml-trees-view .yt-cell-checkbox {
+	margin: var(--size-4-1) var(--size-4-2);
+}
+
+.yaml-trees-view .yt-cell-readonly {
+	background: var(--background-primary-alt);
+}
+
+.yaml-trees-view .yt-cell-nested {
+	display: inline-block;
+	padding: var(--size-4-1) var(--size-4-2);
+	color: var(--text-muted);
+	font-style: italic;
+	font-size: var(--font-ui-smaller);
+}
+
+/* --- Generic buttons --------------------------------------------------- */
 
 .yaml-trees-view .yt-btn {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--size-4-1);
-	padding: var(--size-4-1) var(--size-4-2);
+	margin-top: var(--size-4-3);
+	padding: var(--size-4-1) var(--size-4-3);
 	background: var(--interactive-normal);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-s);
@@ -92,7 +268,6 @@
 .yaml-trees-view .yt-btn-subtle {
 	background: transparent;
 	color: var(--text-muted);
-	margin-top: var(--size-4-2);
 }
 
 .yaml-trees-view .yt-btn-subtle:hover {
@@ -100,102 +275,12 @@
 	color: var(--text-normal);
 }
 
-/* --- Table ------------------------------------------------------------- */
-
-.yaml-trees-view .yt-table-wrapper {
-	overflow: auto;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-}
-
-.yaml-trees-view .yt-table {
-	border-collapse: collapse;
-	width: 100%;
-	font-variant-numeric: tabular-nums;
-}
-
-.yaml-trees-view .yt-table th,
-.yaml-trees-view .yt-table td {
-	border-right: 1px solid var(--background-modifier-border);
-	border-bottom: 1px solid var(--background-modifier-border);
-	padding: 0;
-	text-align: left;
-	vertical-align: middle;
-}
-
-.yaml-trees-view .yt-table thead th {
-	position: sticky;
-	top: 0;
-	z-index: 1;
-	background: var(--background-secondary);
-	padding: var(--size-4-1) var(--size-4-2);
-	font-weight: var(--font-semibold);
-	color: var(--text-normal);
-	white-space: nowrap;
-	cursor: context-menu;
-}
-
-.yaml-trees-view .yt-row-handle {
-	width: 1.6em;
-	min-width: 1.6em;
-	text-align: center;
-	color: var(--text-faint);
-	background: var(--background-secondary);
-	cursor: pointer;
-}
-
-.yaml-trees-view .yt-row-handle svg {
-	width: var(--icon-s);
-	height: var(--icon-s);
-	vertical-align: middle;
-}
-
-.yaml-trees-view .yt-td {
-	background: var(--background-primary);
-}
-
-.yaml-trees-view tbody tr:hover .yt-td,
-.yaml-trees-view .yt-table tbody tr:hover .yt-td {
-	background: var(--background-modifier-hover);
-}
-
-.yaml-trees-view .yt-cell-input {
-	width: 100%;
-	min-width: 6em;
-	box-sizing: border-box;
-	border: none;
-	background: transparent;
-	color: var(--text-normal);
-	padding: var(--size-4-1) var(--size-4-2);
-	font-size: var(--font-ui-smaller);
-	box-shadow: none;
-	border-radius: 0;
-}
-
-.yaml-trees-view .yt-cell-input:focus {
-	outline: 2px solid var(--interactive-accent);
-	outline-offset: -2px;
-}
-
-.yaml-trees-view .yt-cell-empty {
-	color: var(--text-faint);
-}
-
-.yaml-trees-view .yt-cell-checkbox {
-	margin: var(--size-4-1) var(--size-4-2);
-}
-
-.yaml-trees-view .yt-cell-nested {
-	display: inline-block;
-	padding: var(--size-4-1) var(--size-4-2);
-	color: var(--text-muted);
-	font-style: italic;
-}
-
 /* --- Form -------------------------------------------------------------- */
 
 .yaml-trees-view .yt-form {
 	max-width: 46rem;
+	padding: var(--size-4-4);
+	overflow: auto;
 }
 
 .yaml-trees-view .yt-field {
@@ -285,6 +370,7 @@
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	padding: var(--size-4-3);
 }
 
 .yaml-trees-view .yt-source-input {
@@ -320,7 +406,7 @@
 /* --- Empty & error states --------------------------------------------- */
 
 .yaml-trees-view .yt-empty {
-	padding: var(--size-4-6) var(--size-4-3);
+	padding: var(--size-4-8) var(--size-4-4);
 	text-align: center;
 	color: var(--text-muted);
 }
