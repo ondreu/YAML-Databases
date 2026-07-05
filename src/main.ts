@@ -38,31 +38,28 @@ export default class YamlDatabasesPlugin extends Plugin {
 		}
 
 		// `.yaml.md` files are Markdown notes to Obsidian, so we cannot own the
-		// extension. Instead, whenever a file is opened and it is a YAML database,
-		// swap the Markdown view for ours. We only hijack the built-in Markdown
-		// view (never other plugins' views) and guard against loops.
+		// extension via registerExtensions. Two strategies cooperate to make sure
+		// such a file never stays in the default Markdown view:
+		//
+		//  1. `file-open`: fires when a file is opened; we attempt an immediate
+		//     swap of the active leaf if it is the built-in Markdown view.
+		//  2. `layout-change` (debounced): fires after the workspace fully settles
+		//     (view swaps, drag-drop, workspace restore). We scan every Markdown
+		//     leaf and convert any showing a `.yaml.md` file. This catches cases
+		//     where the file-open timing was wrong, and is what makes the hijack
+		//     reliable in practice.
 		this.registerEvent(
 			this.app.workspace.on("file-open", (file: TFile | null) => {
 				if (!file || !isYamlDbFile(file.path)) return;
-				// Defer one tick so Obsidian has settled the Markdown view into its
-				// leaf before we replace it; otherwise getLeaf(false) can still
-				// point at the previous leaf.
-				const path = file.path;
-				setTimeout(() => this.hijackYamlMdLeaf(path), 0);
+				this.hijackActiveIfMarkdown(file.path);
 			})
 		);
 
-		// On startup, convert any Markdown leaves already showing a `.yaml.md`
-		// file (e.g. Obsidian restored the previous workspace).
-		for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
-			const f = (leaf.view as { file?: TFile } | null)?.file;
-			if (f && isYamlDbFile(f.path)) {
-				void leaf.setViewState({
-					type: VIEW_TYPE_YAML,
-					state: { file: f.path },
-				});
-			}
-		}
+		const scan = this.scanAndHijack.bind(this);
+		this.registerEvent(this.app.workspace.on("layout-change", scan));
+		// Run once after the workspace is ready so leaves restored from the last
+		// session are converted too.
+		this.app.workspace.onLayoutReady(() => scan());
 
 		// "New YAML database" in the folder context menu.
 		this.registerEvent(
@@ -118,17 +115,40 @@ export default class YamlDatabasesPlugin extends Plugin {
 	}
 
 	/**
-	 * Replace the Markdown view showing `path` with the YAML Databases view.
-	 * Only acts on the built-in Markdown view (so it never steals a file from
-	 * another plugin) and skips leaves already in our view (loop guard).
+	 * Try to swap the currently active leaf to our view if it is the built-in
+	 * Markdown view showing `path`. Synchronous, best-effort; the layout-change
+	 * scanner is the reliable backstop.
 	 */
-	private hijackYamlMdLeaf(path: string): void {
-		for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+	private hijackActiveIfMarkdown(path: string): void {
+		const leaf = this.app.workspace.getLeaf(false);
+		const view = leaf?.view;
+		if (!view) return;
+		if (view.getViewType?.() !== "markdown") return;
+		const f = (view as { file?: TFile } | null)?.file;
+		if (f && f.path === path) {
+			void leaf!.setViewState({
+				type: VIEW_TYPE_YAML,
+				state: { file: path },
+				active: true,
+			});
+		}
+	}
+
+	/**
+	 * Scan every open Markdown leaf and convert any that is showing a
+	 * `.yaml.md` file into the YAML Databases view. Only the built-in
+	 * `markdown` view is touched, so files opened by other plugins are left
+	 * alone. Leaves already in our view are skipped (loop guard).
+	 */
+	private scanAndHijack(): void {
+		const leaves = this.app.workspace.getLeavesOfType("markdown");
+		for (const leaf of leaves) {
 			const f = (leaf.view as { file?: TFile } | null)?.file;
-			if (f && f.path === path) {
+			if (f && isYamlDbFile(f.path)) {
 				void leaf.setViewState({
 					type: VIEW_TYPE_YAML,
-					state: { file: path },
+					state: { file: f.path },
+					active: true,
 				});
 			}
 		}
