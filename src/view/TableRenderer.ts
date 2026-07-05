@@ -18,6 +18,7 @@ import {
 	nextColumnName,
 	blankRow,
 } from "../model/records";
+import { columnTotals } from "../model/aggregate";
 import { MultilineModal } from "./MultilineModal";
 
 // Spreadsheet editor for a list of records. Supports drill-down into nested
@@ -40,6 +41,11 @@ function isTableArray(value: unknown): value is Record<string, unknown>[] {
 	return Array.isArray(value) && value.every(isPlainObject);
 }
 
+/** Trim floating-point noise from summed quantities. */
+function round(n: number): number {
+	return Math.round(n * 1e6) / 1e6;
+}
+
 export class TableRenderer extends Renderer {
 	/** Drill path from the root database into a nested sub-table. */
 	private path: DrillStep[] = [];
@@ -54,6 +60,11 @@ export class TableRenderer extends Renderer {
 
 	private cellEls: HTMLElement[][] = [];
 	private scrollEl: HTMLElement | null = null;
+	/** Inline-expanded sub-tables, keyed by "row:column". */
+	private expanded = new Set<string>();
+	/** Freeze the first data column while scrolling horizontally. */
+	private freezeFirst = true;
+	private dropEl: HTMLElement | null = null;
 
 	render(): void {
 		this.container.empty();
@@ -140,6 +151,8 @@ export class TableRenderer extends Renderer {
 
 		columns.forEach((column, colIndex) => {
 			const th = tr.createEl("th", { cls: "yt-colhead" });
+			th.dataset.colIndex = String(colIndex);
+			if (this.freezeFirst && colIndex === 0) th.addClass("yt-frozen");
 			const width = this.widths.get(column);
 			if (width) {
 				th.style.width = `${width}px`;
@@ -147,7 +160,6 @@ export class TableRenderer extends Renderer {
 
 			const grip = th.createSpan({ cls: "yt-col-grip" });
 			setIcon(grip, "grip-vertical");
-			grip.setAttr("draggable", "true");
 			grip.setAttr("aria-label", "Drag to reorder column");
 			this.wireColumnDrag(grip, columns, colIndex);
 
@@ -192,12 +204,12 @@ export class TableRenderer extends Renderer {
 		records.forEach((record, rowIndex) => {
 			this.cellEls[rowIndex] = [];
 			const tr = tbody.createEl("tr");
+			tr.dataset.rowIndex = String(rowIndex);
 
 			const gutter = tr.createEl("th", {
 				cls: "yt-rownum",
 				text: String(rowIndex + 1),
 			});
-			gutter.setAttr("draggable", "true");
 			gutter.setAttr("aria-label", `Row ${rowIndex + 1}`);
 			this.wireRowDrag(gutter, records, rowIndex);
 			gutter.addEventListener("click", (evt) =>
@@ -206,12 +218,22 @@ export class TableRenderer extends Renderer {
 
 			columns.forEach((column, colIndex) => {
 				const td = tr.createEl("td", { cls: "yt-cell" });
+				if (this.freezeFirst && colIndex === 0) td.addClass("yt-frozen");
 				this.cellEls[rowIndex][colIndex] = td;
 				this.renderCell(td, record, column, rowIndex, colIndex, records);
 			});
 
 			tr.createEl("td", { cls: "yt-cell yt-cell-spacer" });
+
+			// Inline-expanded sub-tables render as a full-width row underneath.
+			for (const column of columns) {
+				if (this.expanded.has(`${rowIndex}:${column}`) && isSubtable(record[column])) {
+					this.renderSubrow(tbody, record, column, rowIndex, columns.length);
+				}
+			}
 		});
+
+		this.renderTotals(tbody, records, columns);
 
 		const footer = tbody.createEl("tr", { cls: "yt-addrow" });
 		const cell = footer.createEl("td", {
@@ -220,6 +242,62 @@ export class TableRenderer extends Renderer {
 			attr: { colspan: String(columns.length + 2) },
 		});
 		cell.addEventListener("click", () => this.addRow(records, columns));
+	}
+
+	/** Footer row with sums for numeric columns. */
+	private renderTotals(
+		tbody: HTMLElement,
+		records: Record<string, unknown>[],
+		columns: string[]
+	): void {
+		const totals = columnTotals(records, columns);
+		if (!columns.some((c) => totals[c]?.numeric)) {
+			return; // Nothing numeric to total.
+		}
+		const tr = tbody.createEl("tr", { cls: "yt-totals" });
+		const g = tr.createEl("th", { cls: "yt-totals-num", text: "sum" });
+		g.setAttr("aria-label", "Totals");
+		columns.forEach((column, colIndex) => {
+			const td = tr.createEl("td", { cls: "yt-cell yt-totals-cell" });
+			if (this.freezeFirst && colIndex === 0) td.addClass("yt-frozen");
+			const s = totals[column];
+			if (s?.numeric) {
+				td.setText(formatScalar(round(s.sum ?? 0)));
+			}
+		});
+		tr.createEl("td", { cls: "yt-cell yt-cell-spacer" });
+	}
+
+	/** Inline read-only preview of a nested sub-table. */
+	private renderSubrow(
+		tbody: HTMLElement,
+		record: Record<string, unknown>,
+		column: string,
+		rowIndex: number,
+		colCount: number
+	): void {
+		const sub = record[column] as Record<string, unknown>[];
+		const tr = tbody.createEl("tr", { cls: "yt-subrow" });
+		const cell = tr.createEl("td", {
+			cls: "yt-subrow-cell",
+			attr: { colspan: String(colCount + 2) },
+		});
+		const header = cell.createDiv({ cls: "yt-subrow-header" });
+		header.createSpan({ text: `${column} (${sub.length})` });
+		const edit = header.createEl("button", { cls: "yt-drill", text: "Edit" });
+		edit.addEventListener("click", () =>
+			this.drillInto(rowIndex, column, this.resolveLevel() as Record<string, unknown>[])
+		);
+
+		const subCols = collectColumns(sub);
+		const table = cell.createEl("table", { cls: "yt-subtable" });
+		const hrow = table.createEl("thead").createEl("tr");
+		for (const c of subCols) hrow.createEl("th", { text: c });
+		const body = table.createEl("tbody");
+		for (const r of sub) {
+			const rtr = body.createEl("tr");
+			for (const c of subCols) rtr.createEl("td", { text: formatScalar(r[c]) });
+		}
 	}
 
 	private renderCell(
@@ -239,6 +317,16 @@ export class TableRenderer extends Renderer {
 		);
 
 		if (isSubtable(value)) {
+			const key = `${rowIndex}:${column}`;
+			const expander = td.createSpan({ cls: "yt-subexpand" });
+			setIcon(expander, this.expanded.has(key) ? "chevron-down" : "chevron-right");
+			expander.setAttr("aria-label", "Expand sub-assembly");
+			expander.addEventListener("click", (evt) => {
+				evt.stopPropagation();
+				if (this.expanded.has(key)) this.expanded.delete(key);
+				else this.expanded.add(key);
+				this.host.rerender();
+			});
 			const drill = td.createEl("button", { cls: "yt-drill" });
 			setIcon(drill.createSpan({ cls: "yt-btn-icon" }), "table");
 			drill.createSpan({ text: `${value.length} rows` });
@@ -647,31 +735,55 @@ export class TableRenderer extends Renderer {
 		this.deleteColumn(a.columns[a.c]);
 	}
 
-	// --- Drag and drop ---------------------------------------------------
+	/** Add a sub-table (sub-assembly) column to the current level. */
+	cmdAddSubtable(): void {
+		const records = this.resolveLevel();
+		if (records) this.addSubtableColumn(records);
+	}
+
+	/** Insert a copy of a reused component into the current level. */
+	insertComponent(template: Record<string, unknown>): void {
+		const records = this.resolveLevel();
+		if (!records) {
+			new Notice("Open a table first.");
+			return;
+		}
+		records.push(structuredClone(template));
+		this.pendingFocus = { r: records.length - 1, c: 0 };
+		this.host.replaceData(this.host.getData());
+	}
+
+	// --- Drag and drop (pointer-based, works on touch and mouse) ---------
 
 	private wireRowDrag(
 		gutter: HTMLElement,
 		records: Record<string, unknown>[],
 		rowIndex: number
 	): void {
-		gutter.addEventListener("dragstart", (evt) => {
-			evt.dataTransfer?.setData("application/x-yt-row", String(rowIndex));
-			evt.dataTransfer!.effectAllowed = "move";
-		});
-		gutter.addEventListener("dragover", (evt) => {
-			if (evt.dataTransfer?.types.includes("application/x-yt-row")) {
-				evt.preventDefault();
-				gutter.addClass("yt-drop-target");
-			}
-		});
-		gutter.addEventListener("dragleave", () => gutter.removeClass("yt-drop-target"));
-		gutter.addEventListener("drop", (evt) => {
-			gutter.removeClass("yt-drop-target");
-			const from = Number(evt.dataTransfer?.getData("application/x-yt-row"));
-			if (Number.isInteger(from) && from !== rowIndex) {
-				evt.preventDefault();
-				this.moveRow(records, from, rowIndex);
-			}
+		gutter.addEventListener("pointerdown", (evt: PointerEvent) => {
+			if (evt.button !== 0) return;
+			evt.preventDefault();
+			gutter.setPointerCapture(evt.pointerId);
+			gutter.addClass("yt-dragging");
+			let target = rowIndex;
+
+			const onMove = (ev: PointerEvent) => {
+				const idx = this.indexAtPoint(ev.clientX, ev.clientY, "rowIndex");
+				if (idx !== null) {
+					target = idx;
+					this.showDrop(this.trAt(idx));
+				}
+			};
+			const onUp = () => {
+				gutter.releasePointerCapture(evt.pointerId);
+				gutter.removeClass("yt-dragging");
+				gutter.removeEventListener("pointermove", onMove);
+				gutter.removeEventListener("pointerup", onUp);
+				this.clearDrop();
+				if (target !== rowIndex) this.moveRow(records, rowIndex, target);
+			};
+			gutter.addEventListener("pointermove", onMove);
+			gutter.addEventListener("pointerup", onUp);
 		});
 	}
 
@@ -680,28 +792,67 @@ export class TableRenderer extends Renderer {
 		columns: string[],
 		colIndex: number
 	): void {
-		grip.addEventListener("dragstart", (evt) => {
-			evt.dataTransfer?.setData("application/x-yt-col", String(colIndex));
-			evt.dataTransfer!.effectAllowed = "move";
+		grip.addEventListener("pointerdown", (evt: PointerEvent) => {
+			if (evt.button !== 0) return;
+			evt.preventDefault();
+			grip.setPointerCapture(evt.pointerId);
+			let target = colIndex;
+
+			const onMove = (ev: PointerEvent) => {
+				const idx = this.indexAtPoint(ev.clientX, ev.clientY, "colIndex");
+				if (idx !== null) {
+					target = idx;
+					this.showDrop(this.thAt(idx));
+				}
+			};
+			const onUp = () => {
+				grip.releasePointerCapture(evt.pointerId);
+				grip.removeEventListener("pointermove", onMove);
+				grip.removeEventListener("pointerup", onUp);
+				this.clearDrop();
+				if (target !== colIndex) this.moveColumn(columns, colIndex, target);
+			};
+			grip.addEventListener("pointermove", onMove);
+			grip.addEventListener("pointerup", onUp);
 		});
-		const th = grip.closest("th");
-		th?.addEventListener("dragover", (evt) => {
-			if ((evt as DragEvent).dataTransfer?.types.includes("application/x-yt-col")) {
-				evt.preventDefault();
-				th.addClass("yt-drop-target");
-			}
-		});
-		th?.addEventListener("dragleave", () => th.removeClass("yt-drop-target"));
-		th?.addEventListener("drop", (evt) => {
-			th.removeClass("yt-drop-target");
-			const from = Number(
-				(evt as DragEvent).dataTransfer?.getData("application/x-yt-col")
-			);
-			if (Number.isInteger(from) && from !== colIndex) {
-				evt.preventDefault();
-				this.moveColumn(columns, from, colIndex);
-			}
-		});
+	}
+
+	/** Find the row/column index of the element under a screen point. */
+	private indexAtPoint(
+		x: number,
+		y: number,
+		attr: "rowIndex" | "colIndex"
+	): number | null {
+		const el = document.elementFromPoint(x, y) as HTMLElement | null;
+		const match = el?.closest<HTMLElement>(`[data-${attr === "rowIndex" ? "row-index" : "col-index"}]`);
+		if (!match) return null;
+		const raw = attr === "rowIndex" ? match.dataset.rowIndex : match.dataset.colIndex;
+		const n = Number(raw);
+		return Number.isInteger(n) ? n : null;
+	}
+
+	private trAt(rowIndex: number): HTMLElement | null {
+		return (
+			this.scrollEl?.querySelector<HTMLElement>(`tr[data-row-index="${rowIndex}"]`) ?? null
+		);
+	}
+
+	private thAt(colIndex: number): HTMLElement | null {
+		return (
+			this.scrollEl?.querySelector<HTMLElement>(`th[data-col-index="${colIndex}"]`) ?? null
+		);
+	}
+
+	private showDrop(el: HTMLElement | null): void {
+		if (this.dropEl === el) return;
+		this.clearDrop();
+		this.dropEl = el;
+		el?.addClass("yt-drop-target");
+	}
+
+	private clearDrop(): void {
+		this.dropEl?.removeClass("yt-drop-target");
+		this.dropEl = null;
 	}
 
 	private wireColumnResize(

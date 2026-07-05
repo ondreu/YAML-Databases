@@ -17,6 +17,11 @@ import { recordsToCsv } from "../export/csv";
 import { recordsToXlsx } from "../export/xlsx";
 import { exportHtml } from "../export/html";
 import { parseRules, lintRecords, type Diagnostic } from "../lint/lint";
+import { countMatches, replaceAll, type FindOptions } from "../model/find";
+import { collectComponents } from "../model/dedupe";
+import { FindReplaceModal } from "./modals/FindReplaceModal";
+import { ComponentsModal } from "./modals/ComponentsModal";
+import { FlattenModal } from "./modals/FlattenModal";
 
 // The custom main-area view for `.yaml` / `.yml` files. Extends TextFileView so
 // Obsidian handles the file load/save lifecycle; we supply get/setViewData and
@@ -186,31 +191,36 @@ export class YamlView extends TextFileView implements EditorHost {
 			this.ribbonButton(insert, "plus", "Column", () =>
 				this.tableCmd((t) => t.cmdAddColumn())
 			);
+			this.ribbonButton(insert, "table", "Sub-table", () =>
+				this.tableCmd((t) => t.cmdAddSubtable())
+			);
 
 			this.ribbonDivider();
 			const edit = this.ribbonGroup("Edit");
+			// Rows/columns are reordered by dragging their handles; only the
+			// destructive/duplicate actions live in the ribbon now.
 			const colA = edit.createDiv({ cls: "yt-rb-mini-col" });
-			this.ribbonMini(colA, "arrow-up", "Move up", () =>
-				this.tableCmd((t) => t.cmdMoveRowUp())
-			);
-			this.ribbonMini(colA, "arrow-down", "Move down", () =>
-				this.tableCmd((t) => t.cmdMoveRowDown())
-			);
 			this.ribbonMini(colA, "copy", "Duplicate", () =>
 				this.tableCmd((t) => t.cmdDuplicateRow())
 			);
-			const colB = edit.createDiv({ cls: "yt-rb-mini-col" });
-			this.ribbonMini(colB, "trash-2", "Delete row", () =>
+			this.ribbonMini(colA, "trash-2", "Delete row", () =>
 				this.tableCmd((t) => t.cmdDeleteRow())
 			);
+			const colB = edit.createDiv({ cls: "yt-rb-mini-col" });
 			this.ribbonMini(colB, "trash", "Delete column", () =>
 				this.tableCmd((t) => t.cmdDeleteColumn())
 			);
+
+			this.ribbonDivider();
+			const reuse = this.ribbonGroup("Reuse");
+			this.ribbonButton(reuse, "copy", "Components", () => this.openComponents());
 		}
 
 		this.ribbonDivider();
-		const validate = this.ribbonGroup("Validate");
-		this.ribbonButton(validate, "circle-check", "Lint", () => this.toggleLint());
+		const data = this.ribbonGroup("Data");
+		this.ribbonButton(data, "search", "Find", () => this.openFindReplace());
+		this.ribbonButton(data, "layers", "Flatten", () => this.openFlatten());
+		this.ribbonButton(data, "circle-check", "Lint", () => this.toggleLint());
 
 		this.ribbonDivider();
 		const exp = this.ribbonGroup("Export");
@@ -347,6 +357,50 @@ export class YamlView extends TextFileView implements EditorHost {
 				? `Row ${d.row + 1}${d.column ? `, ${d.column}` : ""}: `
 				: "";
 		item.setText(`${where}${d.message}`);
+	}
+
+	// --- Find & replace / Components / Flatten ---------------------------
+
+	private openFindReplace(): void {
+		const records = asRecords(this.model);
+		const columns = records ? collectColumns(records) : [];
+		new FindReplaceModal(
+			this.app,
+			columns,
+			(opts: FindOptions) => countMatches(this.model, opts),
+			(opts: FindOptions, replacement: string) => {
+				const n = replaceAll(this.model, opts, replacement);
+				if (n > 0) this.replaceData(this.model);
+				return n;
+			}
+		).open();
+	}
+
+	private openComponents(): void {
+		const components = collectComponents(this.model);
+		if (components.length === 0) {
+			new Notice("YAML Databases: no components found.");
+			return;
+		}
+		new ComponentsModal(this.app, components, (template) => {
+			this.tableCmd((t) => t.insertComponent(template));
+		}).open();
+	}
+
+	private openFlatten(): void {
+		const records = asRecords(this.model);
+		if (!records) {
+			new Notice("YAML Databases: flatten needs a list of records.");
+			return;
+		}
+		new FlattenModal(this.app, records, (rows, columns, kind) => {
+			const name = `${this.baseName()}-flat.${kind}`;
+			const content =
+				kind === "csv"
+					? recordsToCsv(rows, columns)
+					: recordsToXlsx(rows, columns, `${this.baseName()} flat`);
+			void this.writeSibling(name, content);
+		}).open();
 	}
 
 	// --- Export ----------------------------------------------------------

@@ -484,6 +484,98 @@
 	outline-offset: -2px;
 }
 
+.yaml-trees-view .yt-col-grip,
+.yaml-trees-view .yt-rownum {
+	touch-action: none; /* let pointer-drag work without the page scrolling */
+}
+
+.yaml-trees-view .yt-dragging {
+	opacity: 0.6;
+}
+
+/* Freeze the first data column while scrolling horizontally. */
+.yaml-trees-view .yt-colhead.yt-frozen,
+.yaml-trees-view .yt-cell.yt-frozen {
+	position: sticky;
+	left: 3em;
+	z-index: 1;
+}
+
+.yaml-trees-view thead .yt-colhead.yt-frozen {
+	z-index: 3;
+}
+
+.yaml-trees-view .yt-cell.yt-frozen {
+	background: var(--background-primary);
+}
+
+/* Sub-assembly expand toggle + inline preview. */
+.yaml-trees-view .yt-subexpand {
+	display: inline-flex;
+	vertical-align: middle;
+	color: var(--text-muted);
+	cursor: pointer;
+	margin: 0 2px;
+}
+
+.yaml-trees-view .yt-subexpand svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.yaml-trees-view .yt-subrow-cell {
+	background: var(--background-secondary);
+	padding: var(--size-4-2);
+}
+
+.yaml-trees-view .yt-subrow-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	margin-bottom: var(--size-4-1);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.yaml-trees-view .yt-subtable {
+	border-collapse: collapse;
+	font-size: var(--font-ui-smaller);
+}
+
+.yaml-trees-view .yt-subtable th,
+.yaml-trees-view .yt-subtable td {
+	border: 1px solid var(--background-modifier-border);
+	padding: 2px var(--size-4-2);
+	text-align: left;
+}
+
+.yaml-trees-view .yt-subtable thead th {
+	background: var(--background-primary-alt);
+	font-weight: var(--font-semibold);
+}
+
+/* Totals footer row. */
+.yaml-trees-view .yt-totals .yt-totals-cell {
+	background: var(--background-secondary);
+	font-weight: var(--font-semibold);
+	padding: var(--size-4-1) var(--size-4-2);
+	font-variant-numeric: tabular-nums;
+}
+
+.yaml-trees-view .yt-totals-num {
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	width: 3em;
+	min-width: 3em;
+	text-align: center;
+	color: var(--text-muted);
+	background: var(--background-secondary);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	border-left: 1px solid var(--background-modifier-border);
+}
+
 /* --- Cell selection / special cell types ------------------------------- */
 
 .yaml-trees-view .yt-cell.is-selected {
@@ -539,6 +631,84 @@
 	gap: var(--size-4-2);
 	justify-content: flex-end;
 	margin-top: var(--size-4-3);
+}
+
+.yt-modal-status {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	margin: var(--size-4-2) 0;
+}
+
+/* Components modal. */
+.yt-components-search {
+	width: 100%;
+	margin-bottom: var(--size-4-2);
+}
+
+.yt-components-list {
+	max-height: 50vh;
+	overflow: auto;
+}
+
+.yt-component {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-1) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.yt-component-info {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+}
+
+.yt-component-label {
+	font-weight: var(--font-semibold);
+}
+
+.yt-component-fields {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.yt-component-count {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+/* Flatten modal. */
+.yt-flatten-wrap {
+	max-height: 50vh;
+	overflow: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	margin-bottom: var(--size-4-2);
+}
+
+.yt-flatten-table {
+	border-collapse: collapse;
+	width: 100%;
+	font-size: var(--font-ui-smaller);
+}
+
+.yt-flatten-table th,
+.yt-flatten-table td {
+	border: 1px solid var(--background-modifier-border);
+	padding: 3px var(--size-4-2);
+	text-align: left;
+}
+
+.yt-flatten-table thead th {
+	position: sticky;
+	top: 0;
+	background: var(--background-secondary);
+	font-weight: var(--font-semibold);
 }
 
 /* --- Generic buttons --------------------------------------------------- */

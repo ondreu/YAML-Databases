@@ -26,7 +26,16 @@ single edit produces a single-line change. It works just as well for any YAML.
   - **Form** — a collapsible, labelled tree for maps and nested data.
   - **Source** — the raw YAML with live syntax validation as an escape hatch.
 - **Sub-databases (subassemblies)** — a cell can hold a nested list of records;
-  click it to **drill in**, with a breadcrumb to navigate back out.
+  **expand** it inline to peek, or **drill in** with a breadcrumb to navigate
+  back out. Insert one from the ribbon (Insert -> Sub-table).
+- **Find & replace** across the whole database and its sub-tables (Data -> Find),
+  scoped to a column or all, case-sensitive and whole-cell options.
+- **Components** (Reuse) — a de-duplicated list of every record across the file
+  and its sub-assemblies; insert a copy to reuse a block.
+- **Flatten BOM** (Data -> Flatten) — roll quantities up through the sub-assembly
+  tree into one parts list and export it as CSV/XLSX.
+- **Totals footer** with column sums, a **frozen first column**, and
+  **touch-friendly drag** of row numbers / column handles to reorder.
 - **Cell types** — per cell choose text, number, checkbox, multiline text, list,
   sub-table, or object (right-click a cell).
 - **Linter** — built-in checks plus your own **declarative YAML rules**

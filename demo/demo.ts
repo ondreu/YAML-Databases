@@ -117,19 +117,23 @@ function buildRibbon(ribbon: HTMLElement, mode: "table" | "form"): void {
 		const insert = group("Insert");
 		rb(insert, "Row");
 		rb(insert, "Column");
+		rb(insert, "Sub-table");
 		div();
 		const edit = group("Edit");
 		const a = edit.createDiv({ cls: "yt-rb-mini-col" });
-		mini(a, "Move up");
-		mini(a, "Move down");
 		mini(a, "Duplicate");
+		mini(a, "Delete row");
 		const b = edit.createDiv({ cls: "yt-rb-mini-col" });
-		mini(b, "Delete row");
 		mini(b, "Delete column");
+		div();
+		rb(group("Reuse"), "Components");
 	}
 
 	div();
-	rb(group("Validate"), "Lint");
+	const data = group("Data");
+	rb(data, "Find");
+	rb(data, "Flatten");
+	rb(data, "Lint");
 	div();
 	const exp = group("Export");
 	rb(exp, "CSV");
