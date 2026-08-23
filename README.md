@@ -1,9 +1,9 @@
 ## **Deprecated**
 
 **My development of this plugin has stopped.
-Delisted from community store to avoid littering.
-Feel free to fork.**
+Delisted from community store to avoid littering.**
 
+**Feel free to ask for transfer of ownership if you want to continue development**
 
 ---
 # YAML Databases
