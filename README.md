@@ -1,3 +1,11 @@
+## **Deprecated**
+
+**My development of this plugin has stopped.
+Delisted from community store to avoid littering.
+Feel free to fork.**
+
+
+---
 # YAML Databases
 
 An [Obsidian](https://obsidian.md) plugin to **view, create and edit YAML files
